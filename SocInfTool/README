@@ -1,0 +1,54 @@
+TODO: ws4j not available via maven repository.
+
+--> Java API ws4j download:
+https://code.google.com/p/ws4j/downloads/detail?name=ws4j-1.0.1.jar
+--> add ws4j.jar as local dependency in pom.xml with ${basedir} indicating path to project on local system
+
+	<dependency>
+      <groupId>SITool</groupId>
+      <artifactId>ws4j</artifactId>
+      <version>1.0.2</version>
+      <scope>system</scope> 
+      <systemPath>${basedir}/lib/ws4j.jar</systemPath>
+    </dependency>
+    	
+--> But this file requires patch for bug fixes (range of some metric should be [0,1] instead of [0,pos. infinity]. 
+See here:
+https://code.google.com/p/ws4j/issues/detail?id=6
+
+SOLUTION:
+0.) Install SVN for eclipse (via eclipse Marketplace)
+1.) Download source code using svn from http://ws4j.googlecode.com/svn/trunk/
+2.) Download jawjaw.jar from https://code.google.com/p/jawjaw/downloads/list
+Optionally rename to jawjaw.jar in pom.xml if necessary (current download is jawjaw-1.0.2.jar)
+
+See pom.xml:
+    <dependency>
+      <groupId>edu.cmu.lti</groupId>
+      <artifactId>jawjaw</artifactId>
+      <version>1.0.2</version>
+      <scope>system</scope> 
+      <systemPath>${basedir}/lib/jawjaw-1.0.2.jar</systemPath>
+    </dependency>
+  </dependencies>
+  
+2.) Apply patch from
+https://ws4j.googlecode.com/issues/attachment?aid=60002000&name=0001-Cannot-override-static-members-replacing-fields-with.patch&token=ABZ6GAfxv5CDKEZ3STtd0YxNTwbhW1aa9A%3A1415908695866
+(right click on ws4j-project > Team > Apply Patch > File (Select patch file on local system) > Finish)
+
+3.) Some errors still in package src/test/java class edu.cmu.lti.ws4j.impl.WuPalmerTest.java
+Overwrite methods with:
+	@Test
+	public void testOnSameSynsets() {
+		assertEquals(rc.getMax(), rc.calcRelatednessOfSynset(n1Synsets.get(0), n1Synsets.get(0)).getScore(), 0.0001 );
+	}
+	
+	@Test
+	public void testOnUnknownSynsets() {
+		assertEquals(rc.getMax(), rc.calcRelatednessOfSynset(null, n1Synsets.get(0)).getScore(), 0.0001 );
+		assertEquals(rc.getMax(), rc.calcRelatednessOfWords(null, n1), 0.0001 );
+		assertEquals(rc.getMax(), rc.calcRelatednessOfWords("", n1), 0.0001 );
+	}
+
+4.) Export as (runnable) jar file with referenced libraries
+5.) Add or exchange in lib-folder of project
