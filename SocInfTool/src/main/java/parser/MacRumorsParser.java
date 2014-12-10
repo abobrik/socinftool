@@ -9,6 +9,8 @@ import java.util.Hashtable;
 import java.util.Map.Entry;
 
 import nlp.TopicExtraction;
+import nlp.TopicSimilarity;
+import nlp.TopicSimilarityCalculation;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -26,8 +28,10 @@ public class MacRumorsParser{
 	private CSVWriter csvWOutput;
 	private CSVWriter csvIAOutput;
 	private CSVWriter csvQOutput;
+	private CSVWriter csvTOutput;
 	private CSVWriter csvHTOutput;
 	private CSVWriter csvQHTOutput;
+	private CSVWriter csvTSOutput;
 	
 	private String lastPostId;
 
@@ -36,14 +40,15 @@ public class MacRumorsParser{
 	private TopicExtraction tex;
 	private Hashtable<String, Integer> topics;
 	
+	private TopicSimilarityCalculation tsc;
+	
 	String CSVpath;
 
-	private CSVWriter csvTOutput;
 
 
-	
 	public MacRumorsParser(String path){
 		tex = new TopicExtraction();
+		tsc = new TopicSimilarityCalculation();
 		CSVpath = path;
 		
 		months= new Hashtable<String,String>();
@@ -65,13 +70,9 @@ public class MacRumorsParser{
 		initCSVFiles();
 		fetchDataFromURL(thread, page);
 		writeTopicsToCSV();
+		calcTopicSimilarity();
 		closeCSVFiles();
 		
-	}
-	private void writeTopicsToCSV(){
-		for(String t:tex.getTopics()){
-			csvTOutput.writeNext(new String[]{t});
-		}
 	}
     public void fetchDataFromURL(String thread, int page){
     	String url = ROOT_URL+"/"+thread;
@@ -101,70 +102,7 @@ public class MacRumorsParser{
 			e.printStackTrace();
 		} 
     }
-    private void initCSVFiles() {
-		// initialize csv file for storing user nodes
-		csvUOutput = initCSVFile(CSVpath+"users.csv",new String[]{"username"});
-        
-		// initialize csv file for storing post nodes
-        csvPOutput = initCSVFile(CSVpath+"posts.csv",new String[]{"post_message_id","num","header","text","date","mdate"});
-        
-		// initialize csv file for storing writes relationships
-        csvWOutput = initCSVFile(CSVpath+"writes.csv",new String[]{"username","post_message_id","date","mdate"});
-        
-		// initialize csv file for storing is_after relationships
-        csvIAOutput = initCSVFile(CSVpath+"is_after.csv",new String[]{"username","post_message_id","old_post_message_id","date","mdate"});
-        
-		// initialize csv file for storing quotes relationships
-        csvQOutput = initCSVFile(CSVpath+"quotes.csv",new String[]{"post_message_id","quote_post_message_id","quote", "date","mdate"});
-	
-        // initialize csv file for storing has_topics relationships
-        csvTOutput = initCSVFile(CSVpath+"topics.csv",new String[]{"topic"});
-	
-    	// initialize csv file for storing has_topics relationships
-        csvHTOutput = initCSVFile(CSVpath+"has_topic.csv",new String[]{"post_message_id","topic","count"});
-	
-     // initialize csv file for storing quote-has_topics relationships
-        csvQHTOutput = initCSVFile(CSVpath+"quote_has_topic.csv",new String[]{"post_message_id","quote_post_message_id","topic","count"});
-	
-    }
-    private CSVWriter initCSVFile(String path, String[] HEADER) {
-    	CSVWriter csvOutput = null;
- 		try {
- 		// initialize csv file for storing user nodes
- 		File file = new File(path);  
-         if ( file.exists() )
-         	file.delete();
- 		file.createNewFile();
-		// Use FileWriter constructor that specifies open for appending
-        csvOutput = new CSVWriter(new FileWriter(file, true), ',');
-        
-        // Write header
-        csvOutput.writeNext(HEADER);
-        
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
- 		return csvOutput;
- 	}
-    public void closeCSVFiles(){
-        closeCSVFile(csvUOutput);
-        closeCSVFile(csvPOutput);
-        closeCSVFile(csvWOutput);
-        closeCSVFile(csvIAOutput);
-        closeCSVFile(csvQOutput);
-        closeCSVFile(csvTOutput);
-        closeCSVFile(csvHTOutput);
-        closeCSVFile(csvQHTOutput);
-    }
-    private void closeCSVFile(CSVWriter csvOutput){
-        try {
-	        csvOutput.flush();
-	        csvOutput.close();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-    }
+
    
     public void parseElement(Element element){
     	// Retrieve content properties
@@ -213,16 +151,17 @@ public class MacRumorsParser{
 	    				
 	    				// remove quote meta information from quote
 	    				quote=quote.replace("Originally Posted by "+username , "");
-	    				
-	    				if(refurl.length()<5) System.out.println(num);
+	
 			    		String refPostId =refurl.substring(refurl.indexOf("#")+5,refurl.length());
-			    		csvQOutput.writeNext(new String[]{postId, refPostId, quote, date, mDate+""});
+
 			    		
 			    		// retrieve topics from text and store as quote-has_topic relation with post
 			        	Hashtable<String, Integer> topics = tex.retrieveTopics(quote);
 			        	for(Entry<String, Integer> t:topics.entrySet()){
 			        		csvQHTOutput.writeNext(new String[]{postId, refPostId, t.getKey(),t.getValue().toString()});
 			        	}
+			        	double sentiment = 0;/*tex.getSentiment(quote);*/
+			    		csvQOutput.writeNext(new String[]{postId, refPostId, quote, date, Long.toString(mDate), Double.toString(sentiment)});
     				}
 	    		}
 
@@ -231,8 +170,8 @@ public class MacRumorsParser{
     			e.printStackTrace();
     		}
     	}
-    	
-    	csvPOutput.writeNext(new String[]{postId, num, header, text, date, mDate+""});
+    	double sentiment = 0;/*tex.getSentiment(text);*/
+    	csvPOutput.writeNext(new String[]{postId, num, header, text, date,  Long.toString(mDate), Double.toString(sentiment)});
     	
     	// retrieve topics from text and store as has_topic relation with post
     	Hashtable<String, Integer> topics = tex.retrieveTopics(text);
@@ -248,6 +187,21 @@ public class MacRumorsParser{
     	
     	lastPostId = postId;
     }
+    private void calcTopicSimilarity(){
+		tsc.calcTopicSimilarity(tex.getTopics());
+		writeTopicSimilaritiesToCSV();
+	}
+	
+	private void writeTopicsToCSV(){
+		for(String t:tex.getTopics()){
+			csvTOutput.writeNext(new String[]{t});
+		}
+	}
+	private void writeTopicSimilaritiesToCSV(){
+		for(TopicSimilarity ts:tsc.getTopicSims()){
+			csvTSOutput.writeNext(new String[]{ts.getTopic1(), ts.getTopic2(), Double.toString(ts.getSimilarity()),ts.getRelatednessCalculator()});
+		}
+	}
     // improve
     private Date getDate(String date) throws ParseException{
     	String[] s = date.split("(\\s|\\p{Punct})+"); // splits at whitespace or any punctuation mark
@@ -260,6 +214,79 @@ public class MacRumorsParser{
     		hour = hour+12;
     	SimpleDateFormat simpleDateFormat = new SimpleDateFormat("dd.MM.yyyy HH:mm");
     	return simpleDateFormat.parse(day+"."+month+"."+year+" "+hour+":"+minutes);
+    }
+    
+    /* 
+     * SECTION for initializing and closing csv files
+     * */
+    private void initCSVFiles() {
+		// initialize csv file for storing user nodes
+		csvUOutput = initCSVFile(CSVpath+"users.csv",new String[]{"username"});
+        
+		// initialize csv file for storing post nodes
+        csvPOutput = initCSVFile(CSVpath+"posts.csv",new String[]{"post_message_id","num","header","text","date","mdate","sentiment"});
+        
+		// initialize csv file for storing writes relationships
+        csvWOutput = initCSVFile(CSVpath+"writes.csv",new String[]{"username","post_message_id","date","mdate"});
+        
+		// initialize csv file for storing is_after relationships
+        csvIAOutput = initCSVFile(CSVpath+"is_after.csv",new String[]{"username","post_message_id","old_post_message_id","date","mdate"});
+        
+		// initialize csv file for storing quotes relationships
+        csvQOutput = initCSVFile(CSVpath+"quotes.csv",new String[]{"post_message_id","quote_post_message_id","quote", "date","mdate","sentiment"});
+	
+        // initialize csv file for storing has_topics relationships
+        csvTOutput = initCSVFile(CSVpath+"topics.csv",new String[]{"topic"});
+	
+    	// initialize csv file for storing has_topics relationships
+        csvHTOutput = initCSVFile(CSVpath+"has_topic.csv",new String[]{"post_message_id","topic","count"});
+	
+     // initialize csv file for storing quote-has_topics relationships
+        csvQHTOutput = initCSVFile(CSVpath+"quote_has_topic.csv",new String[]{"post_message_id","quote_post_message_id","topic","count"});
+	
+        // initialize csv file for storing topic-is_similar-topic relationships
+        csvTSOutput = initCSVFile(CSVpath+"topic_is_similar.csv",new String[]{"topic1","topic2","similarity","metric"});
+	
+    }
+
+    private CSVWriter initCSVFile(String path, String[] HEADER) {
+    	CSVWriter csvOutput = null;
+ 		try {
+ 		// initialize csv file for storing user nodes
+ 		File file = new File(path);  
+         if ( file.exists() )
+         	file.delete();
+ 		file.createNewFile();
+		// Use FileWriter constructor that specifies open for appending
+        csvOutput = new CSVWriter(new FileWriter(file, true), ',');
+        
+        // Write header
+        csvOutput.writeNext(HEADER);
+        
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+ 		return csvOutput;
+ 	}
+    public void closeCSVFiles(){
+        closeCSVFile(csvUOutput);
+        closeCSVFile(csvPOutput);
+        closeCSVFile(csvWOutput);
+        closeCSVFile(csvIAOutput);
+        closeCSVFile(csvQOutput);
+        closeCSVFile(csvTOutput);
+        closeCSVFile(csvHTOutput);
+        closeCSVFile(csvQHTOutput);
+        closeCSVFile(csvTSOutput);
+    }
+    private void closeCSVFile(CSVWriter csvOutput){
+        try {
+	        csvOutput.flush();
+	        csvOutput.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
     }
 }
 

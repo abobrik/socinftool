@@ -1,4 +1,4 @@
-package parser;
+package network;
 
 import java.util.LinkedList;
 

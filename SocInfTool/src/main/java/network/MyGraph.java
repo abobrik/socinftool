@@ -1,4 +1,4 @@
-package parser;
+package network;
 
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -8,6 +8,8 @@ import nlp.Topic;
 import org.graphstream.graph.Edge;
 import org.graphstream.graph.Node;
 import org.graphstream.graph.implementations.MultiGraph;
+
+import parser.MacRumorsPost;
 
 public class MyGraph extends MultiGraph{
 

@@ -10,8 +10,11 @@ import edu.stanford.nlp.ling.CoreAnnotations.SentencesAnnotation;
 import edu.stanford.nlp.ling.CoreAnnotations.TextAnnotation;
 import edu.stanford.nlp.ling.CoreAnnotations.TokensAnnotation;
 import edu.stanford.nlp.ling.CoreLabel;
+import edu.stanford.nlp.neural.rnn.RNNCoreAnnotations;
 import edu.stanford.nlp.pipeline.Annotation;
 import edu.stanford.nlp.pipeline.StanfordCoreNLP;
+import edu.stanford.nlp.sentiment.SentimentCoreAnnotations;
+import edu.stanford.nlp.trees.Tree;
 import edu.stanford.nlp.util.CoreMap;
 
 
@@ -26,7 +29,7 @@ public class TopicExtraction {
 	public TopicExtraction(){
 		// creates a StanfordCoreNLP object, with POS tagging, lemmatization
 		 props = new Properties();
-		 props.put("annotators", "tokenize, ssplit, pos, lemma");
+		 props.put("annotators", "tokenize, ssplit, pos, lemma, parse, sentiment");
 		// TODO: + named entity recogintion; + multi-term words
 		 pipeline = new StanfordCoreNLP(props);
 		 
@@ -46,7 +49,13 @@ public class TopicExtraction {
 	    // a CoreMap is essentially a Map that uses class objects as keys and has values with custom types
 	    List<CoreMap> sentences = document.get(SentencesAnnotation.class);
 	    
+	    int sumSentiment = 0;
 	    for(CoreMap sentence: sentences) {
+	    	Tree tree = sentence.get(SentimentCoreAnnotations.AnnotatedTree.class);
+	    	sumSentiment=sumSentiment+RNNCoreAnnotations.getPredictedClass(tree);
+            
+	    	
+	    	
 	      // traversing the words in the current sentence
 	      // a CoreLabel is a CoreMap with additional token-specific methods
 	      for (CoreLabel token: sentence.get(TokensAnnotation.class)) {
@@ -64,6 +73,7 @@ public class TopicExtraction {
 	        }
 	      }
 	    }
+	    double avgSentiment=sumSentiment/sentences.size();
 	    return currtopics;
 	}
 	public void addTopic(String topic){
@@ -78,7 +88,25 @@ public class TopicExtraction {
 			this.currtopics.put(topic, 1);
 		}
 	}
-
+	public double getSentiment(String text){
+	    // create an empty Annotation just with the given text
+	    Annotation document = new Annotation(text);
+	    
+	    // run all Annotators on this text
+	    pipeline.annotate(document);
+		    
+	    // these are all the sentences in this document
+	    // a CoreMap is essentially a Map that uses class objects as keys and has values with custom types
+	    List<CoreMap> sentences = document.get(SentencesAnnotation.class);
+	    
+	    int sumSentiment = 0;
+	    for(CoreMap sentence: sentences) {
+	    	Tree tree = sentence.get(SentimentCoreAnnotations.AnnotatedTree.class);
+	    	sumSentiment=sumSentiment+RNNCoreAnnotations.getPredictedClass(tree);
+	    }
+	    System.out.println(sumSentiment/sentences.size());
+	    return sumSentiment/sentences.size();
+	}
 	public Vector<String> getTopics() {
 		return topics;
 	}

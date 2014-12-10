@@ -3,6 +3,7 @@ import java.io.IOException;
 import java.util.List;
 
 import neo4j.Neo4jInterface;
+import network.MyGraph;
 
 import org.graphstream.graph.Edge;
 import org.graphstream.graph.Node;
