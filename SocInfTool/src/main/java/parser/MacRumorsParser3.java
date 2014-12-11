@@ -1,31 +1,63 @@
 package parser;
 import java.io.IOException;
-import java.util.List;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Hashtable;
 
 import neo4j.Neo4jInterface;
+import nlp.TopicExtraction;
+import nlp.TopicSimilarityCalculation;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.neo4j.graphdb.Node;
+import org.neo4j.graphdb.ResourceIterator;
+
+import scala.collection.mutable.HashTable;
 
 
 public class MacRumorsParser3{
 	public static final String ROOT_URL = "http://forums.macrumors.com";
 	
-	private List<MacRumorsPost> posts;
 	Neo4jInterface n4jinf;
-
+	
+	private TopicExtraction tex;
+	private Hashtable<String, Integer> topics;
+	
+	private TopicSimilarityCalculation tsc;
+	
 	private org.neo4j.graphdb.Node lastPost;
+	private int quoteId=0;
+	
+	private Hashtable<String, String> months;
 	
 	public MacRumorsParser3(){
+		n4jinf = new Neo4jInterface();
+		
+		tex = new TopicExtraction();
+		tsc = new TopicSimilarityCalculation();
+		
+		months= new Hashtable<String,String>();
+    	months.put("Jan","01");
+    	months.put("Feb","02");
+    	months.put("Mar","03");
+    	months.put("Apr","04");
+    	months.put("May","05");
+    	months.put("Jun","06");
+    	months.put("Jul","07");
+    	months.put("Aug","08");
+    	months.put("Sep","09");
+    	months.put("Oct","10");
+    	months.put("Nov","11");
+    	months.put("Dec","12");
 	}
 	
-    public void fetchDataFromURL(String thread, int page, Neo4jInterface ninf){
-    	n4jinf = ninf;
+    public void fetchDataFromURL(String thread, int page){
     	String url = ROOT_URL+"/"+thread;
-        System.out.println("[INFO] Parsing "+url+"&page="+page+"...");
+        System.out.println("[INFO][PARSER] Parsing "+url+"&page="+page+"...");
     	
     	Document document;
 		try {
@@ -44,15 +76,17 @@ public class MacRumorsParser3{
 	        
 	        if(page<num_pages+1){
 	        	page++;
-	        	fetchDataFromURL(thread, page,n4jinf);
+	        	fetchDataFromURL(thread, page);
 	        }
 
 		} catch (IOException e) {
 			e.printStackTrace();
 		} 
     }
+
     public void parseElement(Element element){
-    	// Retrieve content properties
+    	System.out.println("[INFO][PARSER] Parsing next post...");
+    	
     	Elements body = element.select("div[id^=\"post_message_\"]");
     	String text = body.text();
     	
@@ -62,26 +96,90 @@ public class MacRumorsParser3{
     	String header = element.select(".alt1 .smallfont").text();
     	String date = element.select(".tcat").get(0).text(); // TODO: transform to Date type
     	String num= element.select(".tcat").get(1).text();
-    	// TODO: Remove Quotes of other posts etc. from posts
-    	// several quotes?
-    	// quote text?
-    	if(text.contains("Quote:")){
-    		String refurl = body.select("a").attr("href").toString();
-    		long refPostId = Long.parseLong(refurl.substring(refurl.indexOf("#")+5,refurl.length()));
-    		System.out.println(refPostId);
-    		n4jinf.getPostNode(refPostId);
-    	}
-
+    	num = num.substring(2,num.length());
+    	System.out.println("[INFO][PARSER] Parsing next post..."+num);
     	
-    	Node post= n4jinf.addUniquePostNode(header, text, date, num, postId, lastPost);
-    	
+    	// transform date-String into Date and get milliseconds for later comparison
+    	Date fDate = null;
+    	long mDate = 0;
+      	try {
+    			fDate = getDate(date);
+    			date=fDate.toString();
+    			mDate = fDate.getTime();
+    		} catch (ParseException e) {
+    			// TODO Auto-generated catch block
+    			e.printStackTrace();
+    		}
     	String username = element.select(".alt2 .bigusername").text();
-    	Node user = n4jinf.addUniqueUserNode(username, post);
+    	// TODO: extract quote text, remove quote text from quote??
+    	if(text.contains("Quote:")){
 
-    	lastPost = post;
+    		header=""; // header of follow-up posts contains only text "Quote:"
+  
+    		try{
+    			// quotes are formatted with tbody-html tag
+    			Elements quotes = body.select("tbody");
+    			for(Element q:quotes){
+    				
+    				String refurl = q.select("a").attr("href").toString();
+    				if(refurl.length()>0){ // else quote does not refer to other post but quotes some other source
+	    				String quote = q.text();
+	    				String qUsername = q.select("strong").text();
+	    				
+	    				// TODO: should quotes be entirely removed from text, 
+	    				// e.g. be not part of the text mining process??
+	    				// remove entire quote from text
+//	    				text=text.replace("Quote: "+quote,"");
+	    				
+	    				// remove tag "Quote:" from text
+	    				text=text.replace("Quote: ","");
+	    				
+	    				// remove quote meta information from quote
+	    				quote=quote.replace("Originally Posted by "+qUsername , "");
+	
+			    		String refPostId =refurl.substring(refurl.indexOf("#")+5,refurl.length());
+
+			    		
+//			    		// retrieve topics from text and store as quote-has_topic relation with post
+//			        	Hashtable<String, Integer> topics = tex.retrieveTopics(quote);
+//			        	for(Entry<String, Integer> t:topics.entrySet()){
+//			        		csvQHTOutput.writeNext(new String[]{postId, refPostId, t.getKey(),t.getValue().toString()});
+//			        	}
+//			        	double sentiment = 0;/*tex.getSentiment(quote);*/
+			    		n4jinf.addQuoteNode(Integer.toString(quoteId), postId, refPostId, quote, date, Long.toString(mDate));
+
+			    		this.quoteId++;
+    				}
+	    		}
+
+    		} catch (Exception e){
+    			e.printStackTrace();
+    		}
+    	} 
+    	// create post node, user node and user-writes-post relationship
+    	lastPost = n4jinf.addUniquePostNode(postId, header, text, date, Long.toString(mDate), username, lastPost);
+
     }
-    
+    public void extractTopics(){
+    	n4jinf.extraxtTopicsFromPostNodes(tex);
+    }
+    // TODO: improve
+    private Date getDate(String date) throws ParseException{
+    	String[] s = date.split("(\\s|\\p{Punct})+"); // splits at whitespace or any punctuation mark
+    	String year = s[2];
+    	String day = s[1];
+    	String month = months.get(s[0]);
+    	int hour = Integer.parseInt(s[3]);
+    	String minutes = s[4];
+    	if(s[5].equals("PM"))
+    		hour = hour+12;
+    	SimpleDateFormat simpleDateFormat = new SimpleDateFormat("dd.MM.yyyy HH:mm");
+    	return simpleDateFormat.parse(day+"."+month+"."+year+" "+hour+":"+minutes);
+    }
 
+	public void shutdown() {
+		n4jinf.shutdown();
+	}
 
 
 }

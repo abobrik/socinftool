@@ -9,8 +9,6 @@ import org.graphstream.graph.Edge;
 import org.graphstream.graph.Node;
 import org.graphstream.graph.implementations.MultiGraph;
 
-import parser.MacRumorsPost;
-
 public class MyGraph extends MultiGraph{
 
 	public MyGraph(String id) {
