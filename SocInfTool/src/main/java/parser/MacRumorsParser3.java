@@ -76,7 +76,7 @@ public class MacRumorsParser3{
 	        
 	        if(page<num_pages+1){
 	        	page++;
-	        	fetchDataFromURL(thread, page);
+//	        	fetchDataFromURL(thread, page);
 	        }
 
 		} catch (IOException e) {
@@ -133,10 +133,12 @@ public class MacRumorsParser3{
 	    				
 	    				// remove tag "Quote:" from text
 	    				text=text.replace("Quote: ","");
+	    			
 	    				
 	    				// remove quote meta information from quote
 	    				quote=quote.replace("Originally Posted by "+qUsername , "");
-	
+	    				text=text.replace("Originally Posted by "+qUsername , "");
+	    				
 			    		String refPostId =refurl.substring(refurl.indexOf("#")+5,refurl.length());
 
 			    		
@@ -157,7 +159,7 @@ public class MacRumorsParser3{
     		}
     	} 
     	// create post node, user node and user-writes-post relationship
-    	lastPost = n4jinf.addUniquePostNode(postId, header, text, date, Long.toString(mDate), username, lastPost);
+    	lastPost = n4jinf.addPostNode(postId, header, text, date, Long.toString(mDate), username, lastPost);
 
     }
     public void extractTopics(){

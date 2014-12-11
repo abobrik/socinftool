@@ -64,7 +64,7 @@ public class Neo4jInterface {
 	}
 
 
-	public Node addUniquePostNode(String postId, String header, String text, String date, String mdate, String username, Node lastPost) {
+	public Node addPostNode(String postId, String header, String text, String date, String mdate, String username, Node lastPost) {
 		Node post;
 		if(lastPost!=null){
 			ResourceIterator<Node> resultIterator = null;
@@ -130,16 +130,17 @@ public class Neo4jInterface {
 		ResourceIterator<Node> resultIterator = null;
 		try ( Transaction tx = graphDb.beginTx() )
 		{
+//			MERGE (b:Book {id:{id1}})
+//			SET b.name = {name1}
+//			RETURN b
 		    String queryString = "MERGE (q:Quote {quoteId: toInt({quoteId}), "
 		    		+ "postId: {postId}, "
 		    		+ "refPostId: {refPostId},"
 		    		+ "text: {text}, "
 		    		+ "date: {date}, "
-		    		+ "mdate: toInt({mdate})}) "
-		    		+ "MERGE (p_ref:Post {postId: q.refPostId}) "
-		    		+ "MERGE (q)-[r:REFERS_TO {date: {date}, mdate: toInt({mdate})}]-(p_ref)"
-		    		+ "MERGE (p:Post {postId: {postId}}) "
-		    		+ "MERGE (p)-[i:INCLUDES]-(q)"
+		    		+ "mdate: toInt({mdate})})-[r:REFERS_TO {date: {date}, mdate: toInt({mdate})}]-(p_ref:Post {postId: {refPostId}})"
+//		    		+ "MERGE (p:Post {postId: {postId}) "
+//		    		+ "MERGE (p)-[i:INCLUDES]-(q)"
 		    		+ "RETURN q";
 		    Map<String, Object> parameters = new HashMap<>();
 		    parameters.put( "quoteId", quoteId );
