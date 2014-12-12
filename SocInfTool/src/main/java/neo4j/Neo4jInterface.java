@@ -20,7 +20,7 @@ import org.neo4j.kernel.impl.util.FileUtils;
 	
 public class Neo4jInterface {
 	GraphDatabaseService graphDb;
-	private final static String DB_PATH = "D:\\Programming\\Neo4j";
+	private final static String DB_PATH = "/Applications/neo4j-community-2.1.6/data/graph.db";
 	ExecutionEngine engine;
 	
 	
@@ -57,6 +57,10 @@ public class Neo4jInterface {
             .constraintFor( DynamicLabel.label( "Quote" ) )
             .assertPropertyIsUnique( "quoteId" )
             .create();
+		    graphDb.schema()
+            .constraintFor( DynamicLabel.label( "Topic" ) )
+            .assertPropertyIsUnique( "topic" )
+            .create();
 
 		    tx.success();
 		}
@@ -71,11 +75,11 @@ public class Neo4jInterface {
 			try ( Transaction tx = graphDb.beginTx() )
 			{
 				String lastPostId = lastPost.getProperty("postId").toString();
-			    String queryString = "MERGE (p:Post "
-			    		+ "{postId: {postId}, "
-			    		+ "text: {text}, "
-			    		+ "date: {date}, "
-			    		+ "mdate:toInt({mdate})}) "
+			    String queryString = "MERGE (p:Post {postId:{postId}}) "
+			    		+ "SET "
+			    		+ "p.text={text}, "
+			    		+ "p.date={date}, "
+			    		+ "p.mdate=toInt({mdate}) "
 			    		+ "MERGE (u:User {username: {username}})"
 			    		+ "MERGE (p_old:Post {postId: {lastPostId}})"
 			    		+ "MERGE (u)-[w:WRITES {date: {date}, mdate: toInt({mdate})}]-(p)"
@@ -98,14 +102,13 @@ public class Neo4jInterface {
 			try ( Transaction tx = graphDb.beginTx() )
 			{
 			    String queryString = "MERGE (p:Post "
-			    		+ "{postId: {postId}, "
-			    		+ "header: {header}, "
-			    		+ "text: {text}, "
-			    		+ "date: {date}, "
-			    		+ "mdate:toInt({mdate}), "
-			    		+ "isRoot:true"
-			    		+ "})"
-			    		+ "MERGE (u:User {username: {username}})"
+			    		+ "{postId: {postId}}) SET "
+			    		+ "p.header={header}, "
+			    		+ "p.text={text}, "
+			    		+ "p.date={date}, "
+			    		+ "p.mdate=toInt({mdate}), "
+			    		+ "p.isRoot='true'"
+			    		+ "MERGE (u:User {username: {username}}) "
 			    		+ "MERGE (u)-[w:WRITES {date: {date}, mdate: toInt({mdate})}]-(p)"
 			    		+ " RETURN p";
 			    Map<String, Object> parameters = new HashMap<>();
@@ -130,17 +133,17 @@ public class Neo4jInterface {
 		ResourceIterator<Node> resultIterator = null;
 		try ( Transaction tx = graphDb.beginTx() )
 		{
-//			MERGE (b:Book {id:{id1}})
-//			SET b.name = {name1}
-//			RETURN b
-		    String queryString = "MERGE (q:Quote {quoteId: toInt({quoteId}), "
+		    String queryString = "MERGE (q:Quote {"
+		    		+ "quoteId: toInt({quoteId}), "
 		    		+ "postId: {postId}, "
 		    		+ "refPostId: {refPostId},"
 		    		+ "text: {text}, "
 		    		+ "date: {date}, "
-		    		+ "mdate: toInt({mdate})})-[r:REFERS_TO {date: {date}, mdate: toInt({mdate})}]-(p_ref:Post {postId: {refPostId}})"
-//		    		+ "MERGE (p:Post {postId: {postId}) "
-//		    		+ "MERGE (p)-[i:INCLUDES]-(q)"
+		    		+ "mdate: toInt({mdate})}) "
+		    		+ "MERGE (p_ref:Post {postId: {refPostId}}) "
+		    		+ "MERGE (q)-[r:REFERS_TO {date: {date}, mdate: toInt({mdate})}]-(p_ref) "
+		    		+ "MERGE (p:Post {postId: {postId}}) "
+		    		+ "MERGE (p)-[i:INCLUDES]-(q) "
 		    		+ "RETURN q";
 		    Map<String, Object> parameters = new HashMap<>();
 		    parameters.put( "quoteId", quoteId );
@@ -170,7 +173,6 @@ public class Neo4jInterface {
 			System.out.println("[INFO][NEO4J] Delete old content.");
 			FileUtils.deleteRecursively(new File(DB_PATH));
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
@@ -196,64 +198,70 @@ public class Neo4jInterface {
 	}
 
 
-	public ResourceIterator<Node> loadPostNodes() {
+
+
+	public ResourceIterator<Node> loadNodes(String type) {
 		
-		System.out.println("[INFO][NEO4J] Load all post nodes from database.");
-		ResourceIterator<Node> posts = null;
+		System.out.println("[INFO][NEO4J] Load all "+type+" nodes from database.");
+		ResourceIterator<Node> nodes = null;
 		try ( 
 				Transaction tx = graphDb.beginTx() )
 			{
-			    String queryString = "MERGE (p:Post) RETURN p";
-			    posts = engine.execute( queryString ).columnAs( "p" );
+			    String queryString = "MERGE (n:"+type+") RETURN n";
+			    nodes = engine.execute( queryString ).columnAs( "n" );
 			    tx.success();		    
 			}
 		
-		return posts;
+		return nodes;
 				
 	}
-	public ResourceIterator<Node> extraxtTopicsFromPostNodes(TopicExtraction tex) {
+	public void extractTopicsFromNodes(TopicExtraction tex, String type, String id) {
 		
-		System.out.println("[INFO][NEO4J] Load all post nodes from database.");
-		ResourceIterator<Node> posts = null;
+		System.out.println("[INFO][NEO4J] Extract topics for "+type+" nodes.");
 		try ( 
 				Transaction tx = graphDb.beginTx() )
 			{
-			    posts = loadPostNodes();
+			ResourceIterator<Node> nodes = loadNodes(type);
 			    
-		    	while(posts.hasNext()){
-		    		Node p = posts.next();
-		    		System.out.println(p);
-		    		// TODO: parse header from root note
-		    		if(p.hasProperty("text")){
-			    		String text = p.getProperty("text").toString();
+		    	while(nodes.hasNext()){
+		    		Node q = nodes.next();
+		    		System.out.println("[INFO][TEX] "+type+" "+q.getProperty(id));
+		    		if(q.hasProperty("text")){
+			    		String text = q.getProperty("text").toString();
 			    		Hashtable<String, Integer> topics = tex.retrieveTopics(text);
-			    		addTopicNode(p,topics);
+			    		addTopicNode(q,topics,type,id);
+			    		System.out.println("[INFO][TEX] topic count "+topics.size());
 		    		}
 		    	}
 			    
 			}
-		
-		return posts;
 				
 	}
+	public void extractTopicsFromQuoteNodes(TopicExtraction tex) {
+		extractTopicsFromNodes(tex,"Quote","quoteId");		
+	}
+	public void extractTopicsFromPostNodes(TopicExtraction tex) {
+		extractTopicsFromNodes(tex,"Post","postId");		
+	}
 
-	public void addTopicNode(Node p, Hashtable<String, Integer> topics) {
-		ResourceIterator<Node> resultIterator = null;
+	public void addTopicNode(Node n, Hashtable<String, Integer> topics, String type, String id) {
 		try ( Transaction tx = graphDb.beginTx() )
 		{
+			System.out.println(n+" "+id+" "+n.getProperty(id).toString() );
 			for(Entry<String, Integer> t:topics.entrySet()){
-			    String queryString = "MERGE (p:Post {postId: {postId}}) "
-			    		+ "MERGE (t:Topic {topic:{topic}}) "
-			    		+ "MERGE (p)-[ht:HAS {count:toInt({count})}]-(t)"
-			    		+ "RETURN p";
+//			    String queryString = "MERGE (n:"+type+" {"+id+": {"+id+"}}) "
+//			    		+ "MERGE (t:Topic {topic:{topic}}) "
+//			    		+ "MERGE (n)-[ht:HAS {count:toInt({count})}]-(t) "
+//			    		+ "RETURN t";
+			    String queryString = 
+			    		"MERGE (t:Topic2) SET t.topic='help' "
+			    		+ "RETURN t";
 			    Map<String, Object> parameters = new HashMap<>();
-			    parameters.put( "postId", p.getProperty("postId").toString() );
+			    parameters.put( id, n.getProperty(id).toString() );
 			    parameters.put( "topic", t.getKey());
 			    parameters.put( "count", t.getValue());
-	
-			    resultIterator = engine.execute( queryString, parameters ).columnAs( "q" );
-	
-	
+
+			    ResourceIterator<Node> r = engine.execute( queryString, parameters ).columnAs( "t" );
 			    tx.success();
 		}
 		}

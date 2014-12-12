@@ -13,10 +13,6 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
-import org.neo4j.graphdb.Node;
-import org.neo4j.graphdb.ResourceIterator;
-
-import scala.collection.mutable.HashTable;
 
 
 public class MacRumorsParser3{
@@ -37,7 +33,7 @@ public class MacRumorsParser3{
 	public MacRumorsParser3(){
 		n4jinf = new Neo4jInterface();
 		
-		tex = new TopicExtraction();
+
 		tsc = new TopicSimilarityCalculation();
 		
 		months= new Hashtable<String,String>();
@@ -142,11 +138,7 @@ public class MacRumorsParser3{
 			    		String refPostId =refurl.substring(refurl.indexOf("#")+5,refurl.length());
 
 			    		
-//			    		// retrieve topics from text and store as quote-has_topic relation with post
-//			        	Hashtable<String, Integer> topics = tex.retrieveTopics(quote);
-//			        	for(Entry<String, Integer> t:topics.entrySet()){
-//			        		csvQHTOutput.writeNext(new String[]{postId, refPostId, t.getKey(),t.getValue().toString()});
-//			        	}
+
 //			        	double sentiment = 0;/*tex.getSentiment(quote);*/
 			    		n4jinf.addQuoteNode(Integer.toString(quoteId), postId, refPostId, quote, date, Long.toString(mDate));
 
@@ -163,7 +155,12 @@ public class MacRumorsParser3{
 
     }
     public void extractTopics(){
-    	n4jinf.extraxtTopicsFromPostNodes(tex);
+    	System.out.println("[INFO][TEX] Start topic extraction.");
+		tex = new TopicExtraction();
+		System.out.println("[INFO][TEX] Start topic extraction for all posts.");
+    	n4jinf.extractTopicsFromPostNodes(tex);
+		n4jinf.extractTopicsFromQuoteNodes(tex);
+    	System.out.println("[INFO][TEX] Finished.");
     }
     // TODO: improve
     private Date getDate(String date) throws ParseException{

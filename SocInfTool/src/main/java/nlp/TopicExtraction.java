@@ -68,7 +68,7 @@ public class TopicExtraction {
 //		        System.out.println(word+" "+pos+ " "+lemma);
 	        
 	        String topic = lemma.toLowerCase();
-	        if("NN NNS NNP NNPS".contains(pos)){
+	        if("NN NNS NNP NNPS".contains(pos)&&topic.length()>2){
 	        	addTopic(topic);
 	        }
 	      }
