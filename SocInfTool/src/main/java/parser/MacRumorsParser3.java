@@ -33,7 +33,7 @@ public class MacRumorsParser3{
 	public MacRumorsParser3(){
 		n4jinf = new Neo4jInterface();
 		
-
+        tex = new TopicExtraction();
 		tsc = new TopicSimilarityCalculation();
 		
 		months= new Hashtable<String,String>();
@@ -54,7 +54,7 @@ public class MacRumorsParser3{
     public void fetchDataFromURL(String thread, int page){
     	String url = ROOT_URL+"/"+thread;
         System.out.println("[INFO][PARSER] Parsing "+url+"&page="+page+"...");
-    	
+
     	Document document;
 		try {
 			document = Jsoup.connect(url+"&page="+page)
@@ -141,7 +141,7 @@ public class MacRumorsParser3{
 
 //			        	double sentiment = 0;/*tex.getSentiment(quote);*/
 			    		n4jinf.addQuoteNode(Integer.toString(quoteId), postId, refPostId, quote, date, Long.toString(mDate));
-
+			    		n4jinf.extractTopicsFromNode(tex, "Quote", "quoteId", Integer.toString(quoteId), text);
 			    		this.quoteId++;
     				}
 	    		}
@@ -152,16 +152,10 @@ public class MacRumorsParser3{
     	} 
     	// create post node, user node and user-writes-post relationship
     	lastPost = n4jinf.addPostNode(postId, header, text, date, Long.toString(mDate), username, lastPost);
+    	n4jinf.extractTopicsFromNode(tex, "Post", "postId", postId, text);
+		
+    }
 
-    }
-    public void extractTopics(){
-    	System.out.println("[INFO][TEX] Start topic extraction.");
-		tex = new TopicExtraction();
-		System.out.println("[INFO][TEX] Start topic extraction for all posts.");
-    	n4jinf.extractTopicsFromPostNodes(tex);
-		n4jinf.extractTopicsFromQuoteNodes(tex);
-    	System.out.println("[INFO][TEX] Finished.");
-    }
     // TODO: improve
     private Date getDate(String date) throws ParseException{
     	String[] s = date.split("(\\s|\\p{Punct})+"); // splits at whitespace or any punctuation mark

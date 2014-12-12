@@ -134,7 +134,7 @@ public class Neo4jInterface {
 		try ( Transaction tx = graphDb.beginTx() )
 		{
 		    String queryString = "MERGE (q:Quote {"
-		    		+ "quoteId: toInt({quoteId}), "
+		    		+ "quoteId: {quoteId}, "
 		    		+ "postId: {postId}, "
 		    		+ "refPostId: {refPostId},"
 		    		+ "text: {text}, "
@@ -144,6 +144,8 @@ public class Neo4jInterface {
 		    		+ "MERGE (q)-[r:REFERS_TO {date: {date}, mdate: toInt({mdate})}]-(p_ref) "
 		    		+ "MERGE (p:Post {postId: {postId}}) "
 		    		+ "MERGE (p)-[i:INCLUDES]-(q) "
+//		    		+" MERGE (t:Topic2 {topic:{text}}) "
+//		    		+" MERGE (p)-[h:HAS]-(t) "
 		    		+ "RETURN q";
 		    Map<String, Object> parameters = new HashMap<>();
 		    parameters.put( "quoteId", quoteId );
@@ -215,56 +217,36 @@ public class Neo4jInterface {
 		return nodes;
 				
 	}
-	public void extractTopicsFromNodes(TopicExtraction tex, String type, String id) {
-		
-		System.out.println("[INFO][NEO4J] Extract topics for "+type+" nodes.");
-		try ( 
-				Transaction tx = graphDb.beginTx() )
-			{
-			ResourceIterator<Node> nodes = loadNodes(type);
-			    
-		    	while(nodes.hasNext()){
-		    		Node q = nodes.next();
-		    		System.out.println("[INFO][TEX] "+type+" "+q.getProperty(id));
-		    		if(q.hasProperty("text")){
-			    		String text = q.getProperty("text").toString();
+
+	public void extractTopicsFromNode(TopicExtraction tex, String label, String idKey, String idValue, String text) {
+
 			    		Hashtable<String, Integer> topics = tex.retrieveTopics(text);
-			    		addTopicNode(q,topics,type,id);
+			    		addTopicNodes(topics,label,idKey, idValue);
 			    		System.out.println("[INFO][TEX] topic count "+topics.size());
-		    		}
-		    	}
-			    
-			}
+		    		
+
+
 				
 	}
-	public void extractTopicsFromQuoteNodes(TopicExtraction tex) {
-		extractTopicsFromNodes(tex,"Quote","quoteId");		
-	}
-	public void extractTopicsFromPostNodes(TopicExtraction tex) {
-		extractTopicsFromNodes(tex,"Post","postId");		
-	}
+	public void addTopicNodes(Hashtable<String,Integer> topics, String label, String idKey, String idValue) {
+		
+		
+		for(Entry<String, Integer> t:topics.entrySet()){
 
-	public void addTopicNode(Node n, Hashtable<String, Integer> topics, String type, String id) {
-		try ( Transaction tx = graphDb.beginTx() )
-		{
-			System.out.println(n+" "+id+" "+n.getProperty(id).toString() );
-			for(Entry<String, Integer> t:topics.entrySet()){
-//			    String queryString = "MERGE (n:"+type+" {"+id+": {"+id+"}}) "
-//			    		+ "MERGE (t:Topic {topic:{topic}}) "
-//			    		+ "MERGE (n)-[ht:HAS {count:toInt({count})}]-(t) "
-//			    		+ "RETURN t";
-			    String queryString = 
-			    		"MERGE (t:Topic2) SET t.topic='help' "
+		    try(Transaction tx = graphDb.beginTx() )
+			{ 
+		    	String queryString = "MERGE (t:Topic {topic:{topic}}) "
+			    		+ "MERGE (n:"+label+" {"+idKey+": {id}}) "
+			    		+ "MERGE (n)-[h:HAS {count:{count}}]-(t) "
 			    		+ "RETURN t";
 			    Map<String, Object> parameters = new HashMap<>();
-			    parameters.put( id, n.getProperty(id).toString() );
-			    parameters.put( "topic", t.getKey());
-			    parameters.put( "count", t.getValue());
-
-			    ResourceIterator<Node> r = engine.execute( queryString, parameters ).columnAs( "t" );
+			    parameters.put( "topic", t.getKey() );
+			    parameters.put( "count", t.getValue() );
+			    parameters.put( "id", idValue );
+			    ResourceIterator<Node> resultIterator = engine.execute( queryString, parameters ).columnAs( "t" );
+			    resultIterator.next();
 			    tx.success();
-		}
+			} 
 		}
 	}
-
 }

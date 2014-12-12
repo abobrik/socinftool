@@ -12,7 +12,7 @@ public class Main2 {
         int startPage = 1;
         MacRumorsParser3 parser = new MacRumorsParser3();
         parser.fetchDataFromURL(thread,startPage);
-        parser.extractTopics();
+//        parser.extractTopics();
 	    parser.shutdown();
 	}
 
