@@ -4,6 +4,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Hashtable;
+import java.util.Vector;
 
 import neo4j.Neo4jInterface;
 import nlp.TopicExtraction;
@@ -31,7 +32,7 @@ public class MacRumorsParser3{
 	private Hashtable<String, String> months;
 	
 	public MacRumorsParser3(){
-		n4jinf = new Neo4jInterface();
+		n4jinf = new Neo4jInterface(true);
 		
         tex = new TopicExtraction();
 		tsc = new TopicSimilarityCalculation();
@@ -50,8 +51,47 @@ public class MacRumorsParser3{
     	months.put("Nov","11");
     	months.put("Dec","12");
 	}
-	
-    public void fetchDataFromURL(String thread, int page){
+	public MacRumorsParser3(boolean overrideDB){
+		n4jinf = new Neo4jInterface(overrideDB);
+		
+        tex = new TopicExtraction();
+		tsc = new TopicSimilarityCalculation();
+		
+		months= new Hashtable<String,String>();
+    	months.put("Jan","01");
+    	months.put("Feb","02");
+    	months.put("Mar","03");
+    	months.put("Apr","04");
+    	months.put("May","05");
+    	months.put("Jun","06");
+    	months.put("Jul","07");
+    	months.put("Aug","08");
+    	months.put("Sep","09");
+    	months.put("Oct","10");
+    	months.put("Nov","11");
+    	months.put("Dec","12");
+	}
+	public MacRumorsParser3(boolean overrideDB, String pathDB){
+		n4jinf = new Neo4jInterface(overrideDB, pathDB);
+		
+        tex = new TopicExtraction();
+		tsc = new TopicSimilarityCalculation();
+		months= new Hashtable<String,String>();
+    	months.put("Jan","01");
+    	months.put("Feb","02");
+    	months.put("Mar","03");
+    	months.put("Apr","04");
+    	months.put("May","05");
+    	months.put("Jun","06");
+    	months.put("Jul","07");
+    	months.put("Aug","08");
+    	months.put("Sep","09");
+    	months.put("Oct","10");
+    	months.put("Nov","11");
+    	months.put("Dec","12");
+
+	}
+    public void fetchDataFromURL(String thread, int page, int numPages){
     	String url = ROOT_URL+"/"+thread;
         System.out.println("[INFO][PARSER] Parsing "+url+"&page="+page+"...");
 
@@ -70,9 +110,9 @@ public class MacRumorsParser3{
 	        
 	        int num_pages = document.select("#mainContainer .pagenav .alt1").size()/2;
 	        
-	        if(page<num_pages+1){
+	        if(page<=num_pages&page<numPages){
 	        	page++;
-//	        	fetchDataFromURL(thread, page);
+	        	fetchDataFromURL(thread, page, numPages);
 	        }
 
 		} catch (IOException e) {
@@ -173,7 +213,19 @@ public class MacRumorsParser3{
 	public void shutdown() {
 		n4jinf.shutdown();
 	}
+	public Neo4jInterface getNeo4jInterface() {
+		return this.n4jinf;
+	}
+	public void applyIndirectUserCitesUserRelationship(){
+		System.out.println("[INFO][PARSER] Apply indirect User-cites-User relationship");
+		n4jinf.applyIndirectUserRelationship();
+	}
 
+	public void calcTopicSimilarities(int type){
+		Vector<String> topics = n4jinf.loadTopicNodes();
+		
+		n4jinf.saveTopicNodes(tsc.calcTopicSimilarity(topics, type));
+	}
 
 }
 

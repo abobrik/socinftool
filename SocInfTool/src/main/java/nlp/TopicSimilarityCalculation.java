@@ -29,24 +29,26 @@ public class TopicSimilarityCalculation {
     		super();
 
     	}
-    	public void calcTopicSimilarity(Vector<String> topics){
+    	public Vector<TopicSimilarity> calcTopicSimilarity(Vector<String> topics, int type){
     		this.topics = topics;
-    		String type = rcs[3].getClass().getSimpleName();
-    		System.out.println("[INFO] Calculate pairwise topic similarity using "+type);
+    		String metric = rcs[3].getClass().getSimpleName();
+    		System.out.println("[INFO] Calculate pairwise topic similarity using "+metric);
+    		
     		topicSims = new Vector<TopicSimilarity>();
     		
-    		for(int i=0; i</*this.topics.size()*/10; i++){
+    		for(int i=0; i<topics.size(); i++){
     		
-				System.out.println("[INFO] Calculate next pairwise topic similarities for topic "+i+"/"+this.topics.size()+" "+this.topics.get(i));
+				System.out.println("[INFO] Calculate next pairwise topic similarities for topic '"+this.topics.get(i)+"' ("+i+1+"/"+this.topics.size()+")");
 	
-    			for(int j=i; j<this.topics.size(); j++){				
+    			for(int j=0; j<i; j++){				
     				String t1 = this.topics.get(i);
     				String t2 = this.topics.get(j);
-    				double sim = TopicSimilarityCalculation.runWuPalmer(t1,t2);
-    				TopicSimilarity tsim = new TopicSimilarity(t1,t2,Math.round(sim*1000)/1000, type);
+    				double sim = TopicSimilarityCalculation.run(rcs[type],t1,t2);
+    				TopicSimilarity tsim = new TopicSimilarity(t1,t2,Math.round(sim*1000)/1000.0, metric);
     				topicSims.add(tsim);
     			}
     		}
+    		return topicSims;
     	}
     	
         private static double run( RelatednessCalculator rc, String word1, String word2 ) {

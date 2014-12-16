@@ -6,10 +6,13 @@ import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Vector;
 
 import nlp.TopicExtraction;
+import nlp.TopicSimilarity;
 
 import org.neo4j.cypher.javacompat.ExecutionEngine;
+import org.neo4j.cypher.javacompat.ExecutionResult;
 import org.neo4j.graphdb.DynamicLabel;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.Node;
@@ -20,51 +23,61 @@ import org.neo4j.kernel.impl.util.FileUtils;
 	
 public class Neo4jInterface {
 	GraphDatabaseService graphDb;
-	private final static String DB_PATH = "/Applications/neo4j-community-2.1.6/data/graph.db";
+	private static String DB_PATH = "D:/Programming/Neo4j";
 	ExecutionEngine engine;
 	
 	
-	public Neo4jInterface() {
+	public Neo4jInterface(boolean overrideDB) {
 		super();
-		init();
+		init(overrideDB);
+	}
+	public Neo4jInterface(boolean overrideDB, String pathDB) {
+		super();
+		DB_PATH = pathDB;
+		init(overrideDB);
 	}
 
-
-	public void init() {
+	public void init(boolean overrideDB) {
 		System.out.println("[INFO][NEO4J] Init neo4j database. Path: "+DB_PATH);
-		delete();
+		if(overrideDB){
+			delete();
+		}
 		
 		// Instantiate a GraphDatabaseService to create a new database or open an existing one you
 		graphDb = new GraphDatabaseFactory().newEmbeddedDatabase( DB_PATH );
 		// Registers a shutdown hook for the Neo4j instance.
 		registerShutdownHook( graphDb );
-		
-		// Use indexes if you want to retrieve users by username. 
-		// Then we have to configure the database to index users by name. This only needs to be done once.
-		try ( Transaction tx = graphDb.beginTx() )
-		{
-			System.out.println("[INFO][NEO4J] Create constraints.");
-			// create constraints
-			graphDb.schema()
-		            .constraintFor( DynamicLabel.label( "Post" ) )
-		            .assertPropertyIsUnique( "postId" )
-		            .create();
-		    graphDb.schema()
-            .constraintFor( DynamicLabel.label( "User" ) )
-            .assertPropertyIsUnique( "username" )
-            .create();
-		    graphDb.schema()
-            .constraintFor( DynamicLabel.label( "Quote" ) )
-            .assertPropertyIsUnique( "quoteId" )
-            .create();
-		    graphDb.schema()
-            .constraintFor( DynamicLabel.label( "Topic" ) )
-            .assertPropertyIsUnique( "topic" )
-            .create();
-
-		    tx.success();
-		}
 		engine = new ExecutionEngine(graphDb);
+		
+		if(overrideDB){
+			// Use indexes if you want to retrieve users by username. 
+			// Then we have to configure the database to index users by name. This only needs to be done once.
+			try ( Transaction tx = graphDb.beginTx() )
+			{
+				System.out.println("[INFO][NEO4J] Create constraints.");
+				// create constraints
+				graphDb.schema()
+			            .constraintFor( DynamicLabel.label( "Post" ) )
+			            .assertPropertyIsUnique( "postId" )
+			            .create();
+			    graphDb.schema()
+	            .constraintFor( DynamicLabel.label( "User" ) )
+	            .assertPropertyIsUnique( "username" )
+	            .create();
+			    graphDb.schema()
+	            .constraintFor( DynamicLabel.label( "Quote" ) )
+	            .assertPropertyIsUnique( "quoteId" )
+	            .create();
+			    graphDb.schema()
+	            .constraintFor( DynamicLabel.label( "Topic" ) )
+	            .assertPropertyIsUnique( "topic" )
+	            .create();
+	
+			    tx.success();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
 	}
 
 
@@ -220,13 +233,9 @@ public class Neo4jInterface {
 
 	public void extractTopicsFromNode(TopicExtraction tex, String label, String idKey, String idValue, String text) {
 
-			    		Hashtable<String, Integer> topics = tex.retrieveTopics(text);
-			    		addTopicNodes(topics,label,idKey, idValue);
-			    		System.out.println("[INFO][TEX] topic count "+topics.size());
-		    		
-
-
-				
+		Hashtable<String, Integer> topics = tex.retrieveTopics(text);
+		addTopicNodes(topics,label,idKey, idValue);
+		System.out.println("[INFO][TEX] topic count "+topics.size());		
 	}
 	public void addTopicNodes(Hashtable<String,Integer> topics, String label, String idKey, String idValue) {
 		
@@ -237,16 +246,55 @@ public class Neo4jInterface {
 			{ 
 		    	String queryString = "MERGE (t:Topic {topic:{topic}}) "
 			    		+ "MERGE (n:"+label+" {"+idKey+": {id}}) "
-			    		+ "MERGE (n)-[h:HAS {count:{count}}]-(t) "
-			    		+ "RETURN t";
+			    		+ "MERGE (n)-[h:HAS {count:{count}}]-(t) ";
 			    Map<String, Object> parameters = new HashMap<>();
 			    parameters.put( "topic", t.getKey() );
 			    parameters.put( "count", t.getValue() );
 			    parameters.put( "id", idValue );
-			    ResourceIterator<Node> resultIterator = engine.execute( queryString, parameters ).columnAs( "t" );
-			    resultIterator.next();
+			    ExecutionResult result = engine.execute( queryString, parameters );
 			    tx.success();
 			} 
 		}
 	}
+	public void applyIndirectUserRelationship(){
+		System.out.println("[INFO][NEO4J] Apply indirect User-cites-User relationship");
+		try(Transaction tx = graphDb.beginTx() )
+		{ 
+	    	String queryString = "MATCH (u1:User)-[:`WRITES`]->(p1:Post)-[:INCLUDES]->(q:Quote)-[:REFERS_TO]->(p2:Post)-[:WRITES]-(u2:user) MERGE (u1)-[:CITES]->(u2) ";
+		    ExecutionResult result = engine.execute( queryString );
+		    tx.success();
+		} 
+	}
+	public Vector<String> loadTopicNodes(){
+	
+		Vector<String> topics = new Vector<String>();
+		try ( 
+				Transaction tx = graphDb.beginTx() )
+			{
+				ResourceIterator<Node> nodes = loadNodes("Topic");
+				while(nodes.hasNext()){
+					topics.add(nodes.next().getProperty("topic").toString());
+				}		    
+			}
+		return topics;
+	}
+	public void saveTopicNodes(Vector<TopicSimilarity> topSim) {
+		for(TopicSimilarity sim:topSim){
+
+		    try(Transaction tx = graphDb.beginTx() )
+			{ 
+		    	String queryString = "MATCH (t1:Topic {topic:{topic1}}) "
+			    		+ "MATCH (t2:Topic {topic:{topic2}})  "
+			    		+ "MERGE (t1)-[s:SIMILAR {similarity:{sim}, metric:{metric}}]-(t2) ";
+			    Map<String, Object> parameters = new HashMap<>();
+			    parameters.put( "topic1", sim.getTopic1() );
+			    parameters.put( "topic2", sim.getTopic2() );
+			    parameters.put( "sim", sim.getSimilarity() );
+			    parameters.put( "metric", sim.getRelatednessCalculator() );
+			    ExecutionResult result = engine.execute( queryString, parameters );
+			    tx.success();
+			} 
+		}
+	}
+
 }
