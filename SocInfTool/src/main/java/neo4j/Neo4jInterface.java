@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Hashtable;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Vector;
@@ -157,8 +158,6 @@ public class Neo4jInterface {
 		    		+ "MERGE (q)-[r:REFERS_TO {date: {date}, mdate: toInt({mdate})}]-(p_ref) "
 		    		+ "MERGE (p:Post {postId: {postId}}) "
 		    		+ "MERGE (p)-[i:INCLUDES]-(q) "
-//		    		+" MERGE (t:Topic2 {topic:{text}}) "
-//		    		+" MERGE (p)-[h:HAS]-(t) "
 		    		+ "RETURN q";
 		    Map<String, Object> parameters = new HashMap<>();
 		    parameters.put( "quoteId", quoteId );
@@ -230,6 +229,21 @@ public class Neo4jInterface {
 		return nodes;
 				
 	}
+	public ResourceIterator<Node> loadOrderedNodes(String type, String attribute) {
+		
+		System.out.println("[INFO][NEO4J] Load all "+type+" nodes from database.");
+		ResourceIterator<Node> nodes = null;
+		try ( 
+				Transaction tx = graphDb.beginTx() )
+			{
+			    String queryString = "MERGE (n:"+type+") RETURN n ORDER BY n."+attribute+"";
+			    nodes = engine.execute( queryString ).columnAs( "n" );
+			    tx.success();		    
+			}
+		
+		return nodes;
+				
+	}
 
 	public void extractTopicsFromNode(TopicExtraction tex, String label, String idKey, String idValue, String text) {
 
@@ -265,7 +279,7 @@ public class Neo4jInterface {
 		    tx.success();
 		} 
 	}
-	public Vector<String> loadTopicNodes(){
+	public Vector<String> loadTopics(){
 	
 		Vector<String> topics = new Vector<String>();
 		try ( 
@@ -296,5 +310,47 @@ public class Neo4jInterface {
 			} 
 		}
 	}
+	
+	
+	public void applyUsersLabel() {
+	    applyNodeLabel("User","Users","IS_USER");
+	}
+	public void applyTopicsLabel() {	
+	    applyNodeLabel("Topic","Topics","IS_TOPIC");
+	}
+	public void applyPostsLabel() {	
+	    applyNodeLabel("Post","Posts","IS_POST");
+	}
+	public void applyQuotesLabel() {	
+	    applyNodeLabel("Quote","Quotes","IS_QUOTE");
+	}
+	public void applyNodeLabel(String node, String label, String relationship) {
+		System.out.println("[INFO][NEO4J] Apply '"+label+"' label for each "+node+" with '"+relationship+"' relationship");
+	    try(Transaction tx = graphDb.beginTx() )
+			{ 
+		    	String queryString = "MATCH (n:"+node+") MERGE (l:"+label+") MERGE (n)-[r:"+relationship+"]-(l)";
+			    
+			    ExecutionResult result = engine.execute( queryString );
+			    tx.success();
+			} 
+	}
+
+	public void calcSoftCosineSimilarity(String node, String id) {
+	    try(Transaction tx = graphDb.beginTx() )
+			{ 
+		    	String queryString = "match (n1:"+node+")-[h1:HAS]-(t1:Topic)-[s:SIMILAR]-(t2:Topic)-[h2:HAS]-(n2:"+node+" )  "
+		    			+ "return n1."+id+" AS n1, n2."+id+" AS n2, "
+		    					+ "sum(h1.count*h2.count*s.similarity) /(sum(h1.count*h1.count) +sum(h2.count*h2.count)) AS soft_cosim";
+
+			    
+			    ExecutionResult result = engine.execute( queryString );
+			    ResourceIterator<String> n1 = result.columnAs("n1");
+			    ResourceIterator<String> n2 = result.columnAs("n2");
+			    ResourceIterator<String> softCosim = result.columnAs("soft_cosim");
+			    System.out.println(n1.next()+" "+n2.next()+" "+softCosim.next());
+			    tx.success();
+			} 
+	}
+	
 
 }

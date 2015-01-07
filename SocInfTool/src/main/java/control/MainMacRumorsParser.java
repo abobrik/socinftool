@@ -24,8 +24,8 @@ public class MainMacRumorsParser {
 		String thread = "showthread.php?t="+threadID; //showthread.php?t=1821262 a thread with quotes not referring to a post inside the thread but some external source
         MacRumorsParser3 parser = new MacRumorsParser3(overrideDB, pathDB);
         parser.fetchDataFromURL(thread,startPage, numPages);
-        parser.applyIndirectUserCitesUserRelationship();
-        parser.calcTopicSimilarities();
+
+        parser.applyAdditionalLabelsAndRelationships();
 	    parser.shutdown();
 	}
 

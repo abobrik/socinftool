@@ -35,7 +35,7 @@ public class MacRumorsParser3{
 		n4jinf = new Neo4jInterface(true);
 		
         tex = new TopicExtraction();
-		tsc = new TopicSimilarityCalculation();
+		tsc = new TopicSimilarityCalculation(n4jinf);
 		
 		months= new Hashtable<String,String>();
     	months.put("Jan","01");
@@ -55,7 +55,7 @@ public class MacRumorsParser3{
 		n4jinf = new Neo4jInterface(overrideDB);
 		
         tex = new TopicExtraction();
-		tsc = new TopicSimilarityCalculation();
+		tsc = new TopicSimilarityCalculation(n4jinf);
 		
 		months= new Hashtable<String,String>();
     	months.put("Jan","01");
@@ -75,7 +75,7 @@ public class MacRumorsParser3{
 		n4jinf = new Neo4jInterface(overrideDB, pathDB);
 		
         tex = new TopicExtraction();
-		tsc = new TopicSimilarityCalculation();
+		tsc = new TopicSimilarityCalculation(n4jinf);
 		months= new Hashtable<String,String>();
     	months.put("Jan","01");
     	months.put("Feb","02");
@@ -143,7 +143,6 @@ public class MacRumorsParser3{
     			date=fDate.toString();
     			mDate = fDate.getTime();
     		} catch (ParseException e) {
-    			// TODO Auto-generated catch block
     			e.printStackTrace();
     		}
     	String username = element.select(".alt2 .bigusername").text();
@@ -210,22 +209,32 @@ public class MacRumorsParser3{
     	return simpleDateFormat.parse(day+"."+month+"."+year+" "+hour+":"+minutes);
     }
 
+
+	public void applyAdditionalLabelsAndRelationships() {
+		applyIndirectUserCitesUserRelationship();
+		applyLabelsOnNodes();
+	}
+	public void applyIndirectUserCitesUserRelationship(){
+		System.out.println("[INFO][PARSER] Apply indirect User-cites-User relationship");
+		n4jinf.applyIndirectUserRelationship();
+	}
+	public void applyLabelsOnNodes(){
+		System.out.println("[INFO][PARSER] Apply labels for all nodes");
+		n4jinf.applyUsersLabel();
+		n4jinf.applyQuotesLabel();
+		n4jinf.applyPostsLabel();
+		n4jinf.applyTopicsLabel();
+	}
+
+	public void calcTopicSimilarities(int type){
+		tsc.calcTopicSimilarities(type);
+	}
+
 	public void shutdown() {
 		n4jinf.shutdown();
 	}
 	public Neo4jInterface getNeo4jInterface() {
 		return this.n4jinf;
 	}
-	public void applyIndirectUserCitesUserRelationship(){
-		System.out.println("[INFO][PARSER] Apply indirect User-cites-User relationship");
-		n4jinf.applyIndirectUserRelationship();
-	}
-
-	public void calcTopicSimilarities(int type){
-		Vector<String> topics = n4jinf.loadTopicNodes();
-		
-		n4jinf.saveTopicNodes(tsc.calcTopicSimilarity(topics, type));
-	}
-
 }
 

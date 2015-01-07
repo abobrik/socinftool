@@ -1,5 +1,7 @@
 package control;
 
+import nlp.TopicSimilarity;
+import nlp.TopicSimilarityCalculation;
 import parser.MacRumorsParser3;
 
 public class MainTopicSimilarity {
@@ -17,10 +19,9 @@ public class MainTopicSimilarity {
 		boolean overrideDB = Boolean.parseBoolean(args[0]);
 		String pathDB = args[1];
 		int type = Integer.parseInt(args[2]);
-        MacRumorsParser3 parser = new MacRumorsParser3(overrideDB, pathDB);
-        
-        parser.calcTopicSimilarities(type);
-	    parser.shutdown();
+        TopicSimilarityCalculation tsc = new TopicSimilarityCalculation(overrideDB, pathDB);
+        tsc.calcTopicSimilarities(type);
+	    tsc.shutdown();
 	}
 
 }
