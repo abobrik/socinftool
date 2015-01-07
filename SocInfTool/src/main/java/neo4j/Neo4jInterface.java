@@ -325,7 +325,7 @@ public class Neo4jInterface {
 	    applyNodeLabel("Quote","Quotes","IS_QUOTE");
 	}
 	public void applyNodeLabel(String node, String label, String relationship) {
-		System.out.println("[INFO][NEO4J] Apply '"+label+"' label for each "+node+" with '"+relationship+"' relationship");
+		System.out.println("[INFO][NEO4J] Apply '"+label+"' label for each "+node+" with '"+relationship+"' relationship.");
 	    try(Transaction tx = graphDb.beginTx() )
 			{ 
 		    	String queryString = "MATCH (n:"+node+") MERGE (l:"+label+") MERGE (n)-[r:"+relationship+"]-(l)";
@@ -336,6 +336,8 @@ public class Neo4jInterface {
 	}
 
 	public void calcSoftCosineSimilarity(String node, String id) {
+		System.out.println("[INFO][NEO4J] Calculate pairwise content similarity between '"+node+"' nodes.");
+	    
 	    try(Transaction tx = graphDb.beginTx() )
 			{ 
 		    	String queryString = "match (n1:"+node+")-[h1:HAS]-(t1:Topic)-[s:SIMILAR]-(t2:Topic)-[h2:HAS]-(n2:"+node+" )  "
@@ -346,7 +348,7 @@ public class Neo4jInterface {
 			    ExecutionResult result = engine.execute( queryString );
 			    ResourceIterator<String> n1 = result.columnAs("n1");
 			    ResourceIterator<String> n2 = result.columnAs("n2");
-			    ResourceIterator<String> softCosim = result.columnAs("soft_cosim");
+			    ResourceIterator<Double> softCosim = result.columnAs("soft_cosim");
 			    System.out.println(n1.next()+" "+n2.next()+" "+softCosim.next());
 			    tx.success();
 			} 
