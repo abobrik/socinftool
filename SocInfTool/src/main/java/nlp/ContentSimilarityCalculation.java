@@ -12,7 +12,8 @@ public class ContentSimilarityCalculation {
 	}
 	
 	public void calcContentSimilarity(){
-		n4jinf.calcSoftCosineSimilarity("Post","postId");	
+		n4jinf.calcSoftCosineSimilarity("Post");	
+		n4jinf.calcSoftCosineSimilarity("Post","Quote");	
 	}
 	public void shutdown() {
 		n4jinf.shutdown();
