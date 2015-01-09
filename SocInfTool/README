@@ -33,7 +33,7 @@ See pom.xml:
   </dependencies>
   
 2.) Apply patch from
-https://ws4j.googlecode.com/issues/attachment?aid=60002000&name=0001-Cannot-override-static-members-replacing-fields-with.patch&token=ABZ6GAfxv5CDKEZ3STtd0YxNTwbhW1aa9A%3A1415908695866
+https://ws4j.googlecode.com/issues/attachment?aid=60002000&name=0001-Cannot-override-static-members-replacing-fields-with.patch&token=ABZ6GAeXJ2FY18O5vi5US4nww3ozT9HQGg%3A1420719642693
 (right click on ws4j-project > Team > Apply Patch > File (Select patch file on local system) > Finish)
 
 3.) Some errors still in package src/test/java class edu.cmu.lti.ws4j.impl.WuPalmerTest.java

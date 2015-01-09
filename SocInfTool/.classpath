@@ -32,5 +32,14 @@
 			<attribute name="maven.pomderived" value="true"/>
 		</attributes>
 	</classpathentry>
+	<classpathentry exported="true" kind="lib" path="D:/Programming/git/SocInfTool/SocInfTool/lib/ws4j.jar">
+		<attributes>
+			<attribute name="maven.pomderived" value="true"/>
+			<attribute name="maven.groupId" value="SocInfTool"/>
+			<attribute name="maven.artifactId" value="ws4j"/>
+			<attribute name="maven.version" value="1.0.2"/>
+			<attribute name="maven.scope" value="system"/>
+		</attributes>
+	</classpathentry>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>

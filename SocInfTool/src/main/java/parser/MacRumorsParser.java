@@ -16,7 +16,7 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 
-public class MacRumorsParser3{
+public class MacRumorsParser{
 	public static final String ROOT_URL = "http://forums.macrumors.com";
 	
 	Neo4jInterface n4jinf;
@@ -31,7 +31,7 @@ public class MacRumorsParser3{
 	
 	private Hashtable<String, String> months;
 	
-	public MacRumorsParser3(){
+	public MacRumorsParser(){
 		n4jinf = new Neo4jInterface(true);
 		
         tex = new TopicExtraction();
@@ -51,7 +51,7 @@ public class MacRumorsParser3{
     	months.put("Nov","11");
     	months.put("Dec","12");
 	}
-	public MacRumorsParser3(boolean overrideDB){
+	public MacRumorsParser(boolean overrideDB){
 		n4jinf = new Neo4jInterface(overrideDB);
 		
         tex = new TopicExtraction();
@@ -71,7 +71,7 @@ public class MacRumorsParser3{
     	months.put("Nov","11");
     	months.put("Dec","12");
 	}
-	public MacRumorsParser3(boolean overrideDB, String pathDB){
+	public MacRumorsParser(boolean overrideDB, String pathDB){
 		n4jinf = new Neo4jInterface(overrideDB, pathDB);
 		
         tex = new TopicExtraction();

@@ -335,17 +335,19 @@ public class Neo4jInterface {
 			} 
 	}
 
-	public void calcSoftCosineSimilarity(String node) {
-		System.out.println("[INFO][NEO4J] Calculate pairwise content similarity between '"+node+"' nodes.");
+	public void calcSoftCosineSimilarityForPosts() {
+		System.out.println("[INFO][NEO4J] Calculate pairwise content similarity between 'Post' nodes.");
 	    
 	    try(Transaction tx = graphDb.beginTx() )
 			{ 	
 		    	String queryString = 
-		    			"MATCH (n1:"+node+")-[h1:HAS]-(t1:Topic)-[s:SIMILAR]-(t2:Topic)-[h2:HAS]-(n2:"+node+" )  "+
+		    			"MATCH (n1:Post)-[h1:HAS]-(t1:Topic)-[s:SIMILAR]-(t2:Topic)-[h2:HAS]-(n2:Post )  "+
+		    			// Post with higher postId refer to older Posts
+		    			 "WHERE n1.postId>n2.postId "+
 		    			// create new relationship between n1 and n2
-		    			"MERGE (n1)-[ss:SIMILAR]-(n2) "
+		    			"MERGE (n1)-[ss:SIMILAR]->(n2) "
 		    			// calculate soft cosine similarity
-		    			+ "WITH ss, sum(h1.count*h2.count*s.similarity)/(sum(h1.count*h1.count) +sum(h2.count*h2.count)) AS soft_cos"
+		    			+ "WITH ss, sum(h1.count*h2.count*s.similarity)/(SQRT(sum(h1.count*h1.count))*SQRT(sum(h2.count*h2.count))) AS soft_cos"
 		    			// set soft cosine similarity as property of new relationship between n1 and n2
 		    			+" SET ss.similarity=round(1000*soft_cos)/1000, ss.metric='Soft Cosine Similarity'";
 			    

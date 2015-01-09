@@ -1,6 +1,6 @@
 package control;
 
-import parser.MacRumorsParser3;
+import parser.MacRumorsParser;
 
 public class MainMacRumorsParser {
 
@@ -22,7 +22,7 @@ public class MainMacRumorsParser {
 		
 		// TODO: !!! dont start with link to first page. thread has to be ...php?t=... instead of ...php?p=...
 		String thread = "showthread.php?t="+threadID; //showthread.php?t=1821262 a thread with quotes not referring to a post inside the thread but some external source
-        MacRumorsParser3 parser = new MacRumorsParser3(overrideDB, pathDB);
+        MacRumorsParser parser = new MacRumorsParser(overrideDB, pathDB);
         parser.fetchDataFromURL(thread,startPage, numPages);
 
         parser.applyAdditionalLabelsAndRelationships();

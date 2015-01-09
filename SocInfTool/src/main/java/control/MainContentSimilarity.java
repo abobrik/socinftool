@@ -3,7 +3,7 @@ package control;
 import nlp.ContentSimilarityCalculation;
 import nlp.TopicSimilarity;
 import nlp.TopicSimilarityCalculation;
-import parser.MacRumorsParser3;
+import parser.MacRumorsParser;
 
 public class MainContentSimilarity {
 
