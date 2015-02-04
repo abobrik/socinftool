@@ -1,0 +1,12 @@
+- check WordNet similarity calculation (range bug fix)
+- design ontopic/offtopic
+- network visualization
+- rest service
+- improve code
+- derive analytics
+
+- junit test
+- maven project
+
+- remove quote form text for text mining?
+- 
